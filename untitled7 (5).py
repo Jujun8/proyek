@@ -49,7 +49,7 @@ def load_and_process_data(url):
     return df
 
 # Load dan proses data
-url = "https://raw.githubusercontent.com/Jujun8/sansan/main/data%20proyek.csv"
+url = "https://github.com/Jujun8/proyek/blob/main/data%20proyek.csv"
 df_original_raw = pd.read_csv(url) # Simpan dataframe mentah asli untuk tampilan awal
 df = load_and_process_data(url) # DataFrame yang sudah diproses dengan fitur baru
 
