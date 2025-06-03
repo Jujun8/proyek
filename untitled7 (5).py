@@ -74,7 +74,7 @@ if menu == "Halaman Awal":
 
     st.subheader("Dataset Asli (Mentah)")
     if not df_original_raw.empty:
-        st.markdown(f"Menampilkan **{len(df_original_raw)}** baris data asli. *Jika data sangat besar, ini bisa lambat.*")
+        st.markdown(f"Menampilkan **{len(df_original_raw)}** baris data asli. **")
         # Tampilkan seluruh DataFrame asli
         st.dataframe(df_original_raw)
         # Anda bisa menambahkan opsi untuk melihat hanya head:
@@ -88,7 +88,7 @@ if menu == "Halaman Awal":
 
     st.subheader("Dataset Setelah Penambahan Fitur Dasar ('review_length', 'word_count')")
     if not df_processed.empty:
-        st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses. *Jika data sangat besar, ini bisa lambat.*")
+        st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses. **")
         # Tampilkan seluruh DataFrame yang diproses
         st.dataframe(df_processed)
         # Anda bisa menambahkan opsi untuk melihat hanya head:
