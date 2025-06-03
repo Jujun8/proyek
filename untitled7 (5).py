@@ -66,7 +66,9 @@ df_numerical = df_processed[numerical_cols].copy()
 df_numerical.dropna(inplace=True)
 
 # Sidebar menu
-menu = st.sidebar.selectbox("📁 Navigasi", ["Halaman Awal", "Model", "Prediksi"])
+# Tambahkan "Informasi Aplikasi" ke daftar menu
+menu_options = ["Halaman Awal", "Model", "Prediksi", "Informasi Aplikasi"]
+menu = st.sidebar.selectbox("📁 Navigasi", menu_options)
 
 # ====================== HALAMAN AWAL ======================
 if menu == "Halaman Awal":
@@ -74,28 +76,16 @@ if menu == "Halaman Awal":
 
     st.subheader("Dataset Asli (Mentah)")
     if not df_original_raw.empty:
-        st.markdown(f"Menampilkan **{len(df_original_raw)}** baris data asli.")
-        # Tampilkan seluruh DataFrame asli
+        st.markdown(f"Menampilkan **{len(df_original_raw)}** baris data asli. *Jika data sangat besar, ini bisa lambat.*")
         st.dataframe(df_original_raw)
-        # Anda bisa menambahkan opsi untuk melihat hanya head:
-        # if st.checkbox("Tampilkan hanya 5 baris pertama (head) data asli?", value=True, key="show_head_raw"):
-        #     st.dataframe(df_original_raw.head())
-        # else:
-        #     st.dataframe(df_original_raw)
     else:
         st.warning("Gagal menampilkan dataset asli mentah.")
 
 
     st.subheader("Dataset Setelah Penambahan Fitur Dasar ('review_length', 'word_count')")
     if not df_processed.empty:
-        st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses.")
-        # Tampilkan seluruh DataFrame yang diproses
+        st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses. *Jika data sangat besar, ini bisa lambat.*")
         st.dataframe(df_processed)
-        # Anda bisa menambahkan opsi untuk melihat hanya head:
-        # if st.checkbox("Tampilkan hanya 5 baris pertama (head) data yang diproses?", value=True, key="show_head_processed"):
-        #     st.dataframe(df_processed.head())
-        # else:
-        #     st.dataframe(df_processed)
     else:
         st.warning("Gagal menampilkan dataset yang diproses.")
 
@@ -216,17 +206,13 @@ elif menu == "Model":
         df_processed_with_clusters.loc[df_numerical_clustered.index, 'Cluster'] = df_numerical_clustered['Cluster']
 
         st.subheader(f"🧾 Hasil Klastering dengan {n_clusters_selected} Klaster")
-        # Tampilkan seluruh DataFrame yang berhasil diklaster (jika tidak terlalu besar)
-        # atau pertimbangkan untuk menampilkan head() lagi di sini jika datanya sangat besar
         clustered_rows_df = df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1]
         st.markdown(f"Menampilkan **{len(clustered_rows_df)}** baris yang berhasil diklaster.")
-        if len(clustered_rows_df) > 1000: # Batas contoh
+        if len(clustered_rows_df) > 1000:
             st.dataframe(clustered_rows_df.head(100))
             st.caption("Menampilkan 100 baris pertama karena jumlah data yang diklaster besar.")
         else:
             st.dataframe(clustered_rows_df)
-        # st.dataframe(df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1]) # Versi lama menampilkan semua
-
 
         st.subheader("Statistik Tiap Klaster (Berdasarkan Fitur Numerik yang Digunakan Model)")
         for cluster_id in range(n_clusters_selected):
@@ -294,3 +280,64 @@ elif menu == "Prediksi":
                 st.error(f"Error saat scaling atau prediksi: {e}. Periksa apakah semua input numerik dan sesuai.")
             except Exception as e:
                 st.error(f"Terjadi kesalahan tak terduga saat prediksi: {e}")
+
+# ====================== HALAMAN INFORMASI APLIKASI ======================
+elif menu == "Informasi Aplikasi":
+    st.title("ℹ️ Informasi Aplikasi Clustering")
+    st.markdown("---")
+
+    st.header("Tujuan Aplikasi")
+    st.write("""
+    Aplikasi ini dibangun untuk melakukan analisis clustering pada dataset ulasan pengguna. 
+    Tujuannya adalah untuk mengelompokkan ulasan-ulasan yang memiliki karakteristik serupa 
+    berdasarkan fitur-fitur numerik yang diekstrak dari data. Dengan clustering, kita dapat 
+    mengidentifikasi pola atau segmen tertentu dalam ulasan, yang mungkin berguna untuk 
+    memahami sentimen umum, topik yang sering dibahas, atau jenis pengguna tertentu.
+    """)
+
+    st.header("Data yang Digunakan")
+    st.write(f"""
+    Dataset yang digunakan dalam aplikasi ini adalah `data proyek.csv` yang bersumber dari:
+    [{url}]({url}).
+    Dataset ini berisi ulasan pengguna, termasuk nama pengguna, skor yang diberikan, tanggal ulasan, dan konten ulasan.
+    """)
+    st.write("""
+    Fitur tambahan yang dibuat dari data asli adalah:
+    - **`review_length`**: Panjang karakter dari konten ulasan.
+    - **`word_count`**: Jumlah kata dalam konten ulasan.
+    Fitur numerik yang digunakan untuk clustering adalah `score`, `review_length`, dan `word_count`.
+    """)
+
+    st.header("Metode Clustering")
+    st.write("""
+    Metode clustering yang digunakan adalah **K-Means Clustering**. 
+    K-Means adalah algoritma unsupervised learning yang bertujuan untuk mempartisi N observasi 
+    ke dalam K klaster di mana setiap observasi termasuk dalam klaster dengan mean (centroid) terdekat.
+    Sebelum clustering, data numerik distandarisasi menggunakan `StandardScaler` untuk memastikan 
+    semua fitur memiliki skala yang sama.
+    """)
+
+    st.header("Cara Menggunakan Aplikasi")
+    st.write("""
+    1.  **Navigasi**: Gunakan menu dropdown di sidebar kiri untuk berpindah antar halaman.
+    2.  **Halaman Awal**: Menampilkan sampel dataset asli dan yang telah diproses, statistik deskriptif, 
+        serta visualisasi data seperti scatter plot, histogram, dan boxplot untuk fitur-fitur numerik.
+    3.  **Model**: 
+        - Menampilkan grafik "Elbow Method" yang membantu menentukan jumlah klaster (k) yang optimal.
+        - Anda dapat memilih jumlah klaster menggunakan slider.
+        - Hasil klastering (label klaster untuk setiap data) akan ditampilkan beserta statistik deskriptif untuk setiap klaster.
+    4.  **Prediksi**: 
+        - Memungkinkan Anda memasukkan nilai-nilai fitur numerik untuk data baru.
+        - Aplikasi akan memprediksi klaster mana data baru tersebut akan masuk berdasarkan model K-Means yang telah dilatih di halaman "Model".
+    5.  **Informasi Aplikasi**: Halaman ini yang sedang Anda lihat, berisi penjelasan mengenai aplikasi.
+    """)
+
+    st.header("Tentang Proyek Ini")
+    st.write("""
+    Aplikasi ini dibuat sebagai bagian dari proyek analisis data (Anda bisa menambahkan detail spesifik tentang proyek Anda di sini,
+    misalnya nama mata kuliah, tujuan khusus proyek, atau nama pengembang).
+    Harapannya, aplikasi ini dapat memberikan gambaran bagaimana teknik clustering dapat diterapkan 
+    untuk mendapatkan wawasan dari data tekstual seperti ulasan pengguna.
+    """)
+    st.markdown("---")
+    st.caption("Versi Aplikasi: 1.0.0") # Anda bisa menambahkan versi jika perlu
