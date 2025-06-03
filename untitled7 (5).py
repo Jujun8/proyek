@@ -11,52 +11,23 @@ st.set_page_config(page_title="Clustering App", layout="wide")
 
 # Fungsi untuk memuat dan memproses data (agar bisa di-cache)
 @st.cache_data
-def load_and_process_data(url):
+def load_data(url):
     df = pd.read_csv(url)
+    # Tambahkan fitur numerik baru (HANYA YANG AWAL)
     df['content'] = df['content'].astype(str) # Pastikan content adalah string
-
-    # Tambahkan fitur numerik awal
     df['review_length'] = df['content'].str.len()
     df['word_count'] = df['content'].str.split().str.len()
-
-    # Fitur Sentimen (Dummy berdasarkan 'score')
-    # score 1,2 -> negatif (-0.5), 3 -> netral (0.0), 4,5 -> positif (0.5)
-    sentiment_scores = []
-    for score_val in df['score']:
-        if score_val <= 2:
-            sentiment_scores.append(-0.5)
-        elif score_val == 3:
-            sentiment_scores.append(0.0)
-        else:
-            sentiment_scores.append(0.5)
-    df['sentiment_score'] = sentiment_scores
-
-    # Fitur Penyebutan Kata Kunci (Sederhana)
-    df['mentions_cod'] = df['content'].str.lower().str.contains('cod').astype(int)
-    df['mentions_ongkir'] = df['content'].str.lower().str.contains('ongkir').astype(int)
-    df['mentions_kecewa'] = df['content'].str.lower().str.contains('kecewa').astype(int)
-
-    # Fitur dari Tanggal ('at')
-    try:
-        df['at'] = pd.to_datetime(df['at'])
-        df['review_hour'] = df['at'].dt.hour
-        df['review_day_of_week'] = df['at'].dt.dayofweek  # Senin=0, Minggu=6
-    except Exception as e:
-        st.warning(f"Error processing date column 'at': {e}. Date features will not be available.")
-        df['review_hour'] = 0 # Default value jika error
-        df['review_day_of_week'] = 0 # Default value jika error
-
     return df
 
-# Load dan proses data
-url = "https://github.com/Jujun8/proyek/blob/main/data%20proyek.csv"
-df_original_raw = pd.read_csv(url) # Simpan dataframe mentah asli untuk tampilan awal
-df = load_and_process_data(url) # DataFrame yang sudah diproses dengan fitur baru
+# Load data
+url = "https://raw.githubusercontent.com/Jujun8/sansan/main/data%20proyek.csv"
+df_original_raw = pd.read_csv(url) # DataFrame asli mentah dari CSV
+df_processed = load_data(url) # DataFrame dengan fitur 'review_length' dan 'word_count'
 
-# Pilih kolom numerik SETELAH semua fitur ditambahkan
-numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-df_numerical = df[numerical_cols].copy()
-df_numerical.dropna(inplace=True)
+# Pilih kolom numerik dari DataFrame yang sudah diproses
+numerical_cols = df_processed.select_dtypes(include=[np.number]).columns.tolist()
+df_numerical = df_processed[numerical_cols].copy()
+df_numerical.dropna(inplace=True) # Hapus NaN dari data numerik yang akan digunakan untuk clustering
 
 # Sidebar menu
 menu = st.sidebar.selectbox("📁 Navigasi", ["Halaman Awal", "Model", "Prediksi"])
@@ -66,38 +37,44 @@ if menu == "Halaman Awal":
     st.title("📊 Dashboard Data Proyek")
 
     st.subheader("Dataset Asli (Mentah)")
-    st.dataframe(df_original_raw.head()) # Tampilkan data asli sebelum ada fitur tambahan
+    st.dataframe(df_original_raw.head()) # Tampilkan head data asli
 
-    st.subheader("Dataset Setelah Penambahan Fitur")
-    st.dataframe(df.head())
+    st.subheader("Dataset Setelah Penambahan Fitur Dasar ('review_length', 'word_count')")
+    st.dataframe(df_processed.head()) # Tampilkan head data setelah penambahan fitur dasar
 
     st.subheader("Karakteristik Data (Statistik Deskriptif untuk Kolom Numerik)")
-    if not df[numerical_cols].empty: # Gunakan df karena numerical_cols berasal dari df
-        st.dataframe(df[numerical_cols].describe())
+    # Gunakan numerical_cols yang didefinisikan dari df_processed
+    if not df_processed[numerical_cols].empty:
+        st.dataframe(df_processed[numerical_cols].describe())
     else:
         st.info("Tidak ada kolom numerik untuk ditampilkan statistiknya.")
 
     st.subheader("Visualisasi Data")
-    valid_numerical_cols_for_viz = [col for col in numerical_cols if col in df.columns and df[col].nunique() > 1] # Hanya kolom dengan >1 nilai unik
+    # Filter numerical_cols yang ada di df_processed dan punya variasi
+    valid_numerical_cols_for_viz = [col for col in numerical_cols if col in df_processed.columns and df_processed[col].nunique() > 1]
 
     if len(valid_numerical_cols_for_viz) >= 1:
         viz_type = st.radio("Pilih Jenis Visualisasi", ["Scatter Plot", "Histogram", "Boxplot"])
 
         if viz_type == "Scatter Plot":
             if len(valid_numerical_cols_for_viz) >= 2:
-                col1 = st.selectbox("Pilih fitur X", valid_numerical_cols_for_viz, index=0, key="scatter_x")
+                col1_default_index = 0
+                if 'score' in valid_numerical_cols_for_viz:
+                    col1_default_index = valid_numerical_cols_for_viz.index('score')
+                col1 = st.selectbox("Pilih fitur X", valid_numerical_cols_for_viz, index=col1_default_index, key="scatter_x")
+
                 col2_options = [col for col in valid_numerical_cols_for_viz if col != col1]
                 if col2_options:
                     col2_default_index = 0
-                    if 'score' in col2_options and col1 != 'score':
-                         col2_default_index = col2_options.index('score')
-                    elif len(col2_options) > 1 and 'sentiment_score' in col2_options and col1 != 'sentiment_score':
-                         col2_default_index = col2_options.index('sentiment_score')
-
+                    if 'review_length' in col2_options:
+                         col2_default_index = col2_options.index('review_length')
+                    elif len(col2_options) > 0:
+                        col2_default_index = 0 # fallback
 
                     col2 = st.selectbox("Pilih fitur Y", col2_options, index=col2_default_index, key="scatter_y")
                     fig, ax = plt.subplots()
-                    sns.scatterplot(data=df, x=col1, y=col2, hue='score' if 'score' in df.columns else None, alpha=0.7, ax=ax) # Tambahkan hue
+                    # Gunakan df_processed untuk plotting
+                    sns.scatterplot(data=df_processed, x=col1, y=col2, hue='score' if 'score' in df_processed.columns else None, alpha=0.7, ax=ax)
                     ax.set_xlabel(col1)
                     ax.set_ylabel(col2)
                     ax.set_title(f'Scatter Plot: {col1} vs {col2}')
@@ -109,14 +86,11 @@ if menu == "Halaman Awal":
 
         elif viz_type == "Histogram":
             default_hist_col_index = 0
-            if 'sentiment_score' in valid_numerical_cols_for_viz:
-                default_hist_col_index = valid_numerical_cols_for_viz.index('sentiment_score')
-            elif 'score' in valid_numerical_cols_for_viz:
+            if 'score' in valid_numerical_cols_for_viz:
                 default_hist_col_index = valid_numerical_cols_for_viz.index('score')
-
             selected_col_hist = st.selectbox("Pilih fitur", valid_numerical_cols_for_viz, index=default_hist_col_index, key="hist_select")
             fig, ax = plt.subplots()
-            sns.histplot(df[selected_col_hist].dropna(), kde=True, bins=20, ax=ax)
+            sns.histplot(df_processed[selected_col_hist].dropna(), kde=True, bins=20, ax=ax)
             ax.set_title(f'Distribusi Nilai {selected_col_hist}')
             st.pyplot(fig)
 
@@ -125,11 +99,10 @@ if menu == "Halaman Awal":
             if 'review_length' in valid_numerical_cols_for_viz:
                 default_box_col_index = valid_numerical_cols_for_viz.index('review_length')
             elif 'score' in valid_numerical_cols_for_viz:
-                default_box_col_index = valid_numerical_cols_for_viz.index('score')
-
+                 default_box_col_index = valid_numerical_cols_for_viz.index('score')
             selected_col_box = st.selectbox("Pilih fitur", valid_numerical_cols_for_viz, index=default_box_col_index, key="box_select")
             fig, ax = plt.subplots()
-            sns.boxplot(x=df[selected_col_box].dropna(), ax=ax)
+            sns.boxplot(x=df_processed[selected_col_box].dropna(), ax=ax)
             ax.set_title(f'Boxplot {selected_col_box}')
             st.pyplot(fig)
     else:
@@ -144,12 +117,10 @@ elif menu == "Model":
     else:
         scaler = StandardScaler()
         try:
-            scaled_data = scaler.fit_transform(df_numerical)
+            scaled_data = scaler.fit_transform(df_numerical) # df_numerical adalah hasil dari df_processed[numerical_cols].dropna()
         except ValueError as ve:
             st.error(f"Error saat scaling data: {ve}")
-            st.error("Ini mungkin terjadi jika df_numerical hanya memiliki satu baris setelah dropna atau jika semua nilai dalam satu kolom adalah sama.")
             st.stop()
-
 
         st.subheader("📐 Elbow Method untuk Menentukan Jumlah Klaster Optimal")
         inertia = []
@@ -177,48 +148,41 @@ elif menu == "Model":
 
         kmeans = KMeans(n_clusters=n_clusters_selected, random_state=42, n_init='auto')
         
-        df_numerical_clustered = df_numerical.copy() # Bekerja dengan df_numerical yang sudah di-dropna
+        df_numerical_clustered = df_numerical.copy() # df_numerical sudah di-dropna dan hanya berisi kolom numerik
         df_numerical_clustered['Cluster'] = kmeans.fit_predict(scaled_data)
 
         st.session_state.kmeans_model = kmeans
         st.session_state.scaler_model = scaler
-        # Simpan kolom yang BENAR-BENAR digunakan untuk training df_numerical (bukan numerical_cols dari df awal)
-        st.session_state.numerical_cols_model = df_numerical.columns.tolist()
+        st.session_state.numerical_cols_model = df_numerical.columns.tolist() # Kolom yang digunakan untuk model
 
-
-        # Inisialisasi kolom Cluster di df dengan nilai default
-        df_with_clusters = df.copy() # Mulai dari df yang sudah diproses
-        df_with_clusters['Cluster'] = -1 # Atau np.nan
-        # Update kolom Cluster di df_with_clusters berdasarkan index dari df_numerical_clustered
-        df_with_clusters.loc[df_numerical_clustered.index, 'Cluster'] = df_numerical_clustered['Cluster']
+        # Tambah hasil cluster ke dataframe df_processed untuk ditampilkan
+        df_processed_with_clusters = df_processed.copy()
+        df_processed_with_clusters['Cluster'] = -1 # Default
+        df_processed_with_clusters.loc[df_numerical_clustered.index, 'Cluster'] = df_numerical_clustered['Cluster']
 
         st.subheader(f"🧾 Hasil Klastering dengan {n_clusters_selected} Klaster")
-        st.dataframe(df_with_clusters[df_with_clusters['Cluster'] != -1].head())
-        st.write(f"Menampilkan {len(df_with_clusters[df_with_clusters['Cluster'] != -1])} baris yang berhasil diklaster.")
+        # Tampilkan dari df_processed_with_clusters yang barisnya berhasil diklaster
+        st.dataframe(df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1].head())
+        st.write(f"Menampilkan {len(df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1])} baris yang berhasil diklaster.")
 
-
-        st.subheader("Statistik Tiap Klaster (Berdasarkan Fitur Numerik Asli yang Digunakan Model)")
+        st.subheader("Statistik Tiap Klaster (Berdasarkan Fitur Numerik yang Digunakan Model)")
         for cluster_id in range(n_clusters_selected):
             st.markdown(f"#### 📌 Statistik Cluster {cluster_id}")
-            # Ambil data dari df_numerical_clustered untuk statistik
-            # dan hanya kolom yang digunakan untuk model (df_numerical.columns)
             cluster_data_for_stats = df_numerical_clustered[df_numerical_clustered['Cluster'] == cluster_id][st.session_state.numerical_cols_model]
             if not cluster_data_for_stats.empty:
                 st.dataframe(cluster_data_for_stats.describe())
             else:
                 st.write("Tidak ada data untuk klaster ini.")
         
-        # Visualisasi sederhana hasil cluster (jika memungkinkan)
         if len(st.session_state.numerical_cols_model) >= 2:
-            st.subheader("Visualisasi Klaster (Contoh menggunakan 2 fitur pertama)")
+            st.subheader("Visualisasi Klaster (Contoh menggunakan 2 fitur pertama dari model)")
             feat1_cluster_viz = st.session_state.numerical_cols_model[0]
             feat2_cluster_viz = st.session_state.numerical_cols_model[1]
             
-            fig_cluster, ax_cluster = plt.subplots()
-            sns.scatterplot(data=df_numerical_clustered, x=feat1_cluster_viz, y=feat2_cluster_viz, hue='Cluster', palette='viridis', ax=ax_cluster)
-            ax_cluster.set_title(f'Klaster berdasarkan {feat1_cluster_viz} dan {feat2_cluster_viz}')
-            st.pyplot(fig_cluster)
-
+            fig_cluster_viz, ax_cluster_viz = plt.subplots()
+            sns.scatterplot(data=df_numerical_clustered, x=feat1_cluster_viz, y=feat2_cluster_viz, hue='Cluster', palette='viridis', ax=ax_cluster_viz)
+            ax_cluster_viz.set_title(f'Klaster berdasarkan {feat1_cluster_viz} dan {feat2_cluster_viz}')
+            st.pyplot(fig_cluster_viz)
 
 # ====================== HALAMAN PREDIKSI ======================
 elif menu == "Prediksi":
@@ -231,66 +195,40 @@ elif menu == "Prediksi":
         scaler_trained = st.session_state.scaler_model
         model_numerical_cols = st.session_state.numerical_cols_model # Ini adalah kolom dari df_numerical
 
-        st.subheader("Masukkan Teks Ulasan Baru dan Skor:")
-        input_content = st.text_area("Masukkan teks ulasan:", height=100, key="input_content_pred")
-        input_score = st.number_input("Masukkan skor (1-5):", min_value=1, max_value=5, value=3, step=1, key="input_score_pred")
+        st.subheader("Masukkan Nilai Fitur untuk Data Baru:")
+        st.markdown(f"Model dilatih menggunakan fitur berikut: `{'`, `'.join(model_numerical_cols)}`")
 
-        # Tombol Prediksi
-        if st.button("Prediksi Klaster", key="predict_button_new_data"):
-            if not input_content:
-                st.error("Teks ulasan tidak boleh kosong.")
-            else:
-                # Buat DataFrame sementara untuk data baru
-                new_data = pd.DataFrame([{
-                    'content': input_content,
-                    'score': input_score,
-                    'at': pd.Timestamp.now() # Tambahkan 'at' agar fitur tanggal bisa dihitung
-                }])
+        input_data_pred = {} # Gunakan nama variabel berbeda untuk menghindari konflik
+        # Ambil df_numerical yang terakhir digunakan untuk melatih model untuk nilai default
+        # Ini diasumsikan df_numerical adalah state data yang benar untuk default
+        df_for_defaults = df_numerical 
 
-                # Lakukan feature engineering pada data baru (mirip dengan load_and_process_data)
-                new_data['content'] = new_data['content'].astype(str)
-                new_data['review_length'] = new_data['content'].str.len()
-                new_data['word_count'] = new_data['content'].str.split().str.len()
+        for col_pred in model_numerical_cols:
+            default_val_pred = 0.0
+            if col_pred in df_for_defaults.columns:
+                 default_val_pred = float(df_for_defaults[col_pred].mean())
+            
+            input_data_pred[col_pred] = st.number_input(
+                f"Nilai untuk '{col_pred}'",
+                value=default_val_pred,
+                format="%.2f",
+                key=f"input_pred_{col_pred}" # Key unik untuk input prediksi
+            )
 
-                if new_data['score'].iloc[0] <= 2:
-                    new_data['sentiment_score'] = -0.5
-                elif new_data['score'].iloc[0] == 3:
-                    new_data['sentiment_score'] = 0.0
-                else:
-                    new_data['sentiment_score'] = 0.5
+        if st.button("Prediksi Klaster", key="predict_button_manual_input"):
+            try:
+                # Buat DataFrame dari input_data dengan urutan kolom yang sama seperti saat training
+                input_df_pred = pd.DataFrame([input_data_pred])[model_numerical_cols]
+                
+                input_scaled_pred = scaler_trained.transform(input_df_pred)
+                
+                cluster_pred_val = kmeans_trained.predict(input_scaled_pred)[0]
+                st.success(f"✅ Data baru diprediksi termasuk ke dalam Cluster: {cluster_pred_val}")
 
-                new_data['mentions_cod'] = new_data['content'].str.lower().str.contains('cod').astype(int)
-                new_data['mentions_ongkir'] = new_data['content'].str.lower().str.contains('ongkir').astype(int)
-                new_data['mentions_kecewa'] = new_data['content'].str.lower().str.contains('kecewa').astype(int)
+                st.subheader("Fitur yang Dimasukkan untuk Prediksi:")
+                st.dataframe(input_df_pred)
 
-                new_data['at'] = pd.to_datetime(new_data['at']) # Sudah Timestamp, tapi pastikan
-                new_data['review_hour'] = new_data['at'].dt.hour
-                new_data['review_day_of_week'] = new_data['at'].dt.dayofweek
-
-                # Pilih hanya kolom yang digunakan oleh model
-                # Pastikan urutan kolom sama dengan saat training
-                try:
-                    input_df_features = new_data[model_numerical_cols]
-                except KeyError as e:
-                    st.error(f"Kolom yang hilang untuk prediksi: {e}. Pastikan semua fitur yang dibutuhkan model ada.")
-                    st.error(f"Model membutuhkan kolom: {model_numerical_cols}")
-                    st.error(f"Fitur yang dihasilkan dari input: {new_data.columns.tolist()}")
-                    st.stop()
-
-
-                # Scaling data input
-                try:
-                    input_scaled = scaler_trained.transform(input_df_features)
-                    
-                    # Prediksi cluster
-                    cluster_pred = kmeans_trained.predict(input_scaled)[0]
-                    st.success(f"✅ Data baru diprediksi termasuk ke dalam Cluster: {cluster_pred}")
-
-                    st.subheader("Fitur yang Digunakan untuk Prediksi:")
-                    st.dataframe(input_df_features)
-
-                except ValueError as e:
-                     st.error(f"Error saat scaling atau prediksi: {e}")
-                     st.error("Pastikan input data baru memiliki format yang benar dan scaler telah dilatih dengan benar.")
-                except Exception as e:
-                    st.error(f"Terjadi kesalahan tak terduga saat prediksi: {e}")
+            except ValueError as e:
+                st.error(f"Error saat scaling atau prediksi: {e}. Periksa apakah semua input numerik dan sesuai.")
+            except Exception as e:
+                st.error(f"Terjadi kesalahan tak terduga saat prediksi: {e}")
