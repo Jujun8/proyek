@@ -17,7 +17,7 @@ url = "https://raw.githubusercontent.com/Jujun8/sansan/main/data%20proyek.csv"
 df = pd.read_csv(url)
 df.head(1160)
 
-!pip install streamlit
+
 
 # prompt: berikan saya kode untuk menampilkan data tersebut pada streamlit
 
