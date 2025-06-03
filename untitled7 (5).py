@@ -1,114 +1,80 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
+import seaborn as sns
+from wordcloud import WordCloud
+from datetime import datetime
 
 # Konfigurasi halaman
-st.set_page_config(page_title="Clustering App", layout="wide")
+st.set_page_config(page_title="Analisis Ulasan Pengguna", layout="wide")
 
 # Load data
 url = "https://raw.githubusercontent.com/Jujun8/sansan/main/data%20proyek.csv"
 df = pd.read_csv(url)
 
-# Sidebar menu
-menu = st.sidebar.selectbox("📁 Navigasi", ["Halaman Awal", "Model", "Prediksi"])
+# Parsing kolom tanggal
+df['at'] = pd.to_datetime(df['at'], errors='coerce')
 
-# Seleksi kolom numerik
-numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns
-df_numerical = df[numerical_cols].dropna()
+# Sidebar menu
+menu = st.sidebar.selectbox("📁 Navigasi", ["Halaman Awal", "Statistik & Visualisasi", "Filter Data", "Tabel Interaktif"])
 
 # Halaman Awal
 if menu == "Halaman Awal":
-    st.title("📊 Dashboard Data Proyek")
-
+    st.title("📊 Dashboard Ulasan Pengguna")
     st.subheader("Dataset")
     st.dataframe(df)
 
-    st.subheader("Karakteristik Data (Statistik Deskriptif)")
-    st.dataframe(df[numerical_cols].describe())
+# Statistik & Visualisasi
+elif menu == "Statistik & Visualisasi":
+    st.title("📈 Statistik dan Visualisasi")
 
-    st.subheader("Visualisasi Data")
-    if len(numerical_cols) >= 2:
-        col1 = st.selectbox("Pilih fitur X", numerical_cols, index=0)
-        col2 = st.selectbox("Pilih fitur Y", numerical_cols, index=1)
-        fig, ax = plt.subplots()
-        ax.scatter(df[col1], df[col2], alpha=0.7)
-        ax.set_xlabel(col1)
-        ax.set_ylabel(col2)
-        ax.set_title(f'Scatter Plot: {col1} vs {col2}')
-        st.pyplot(fig)
-    else:
-        st.info("Tidak cukup fitur numerik untuk divisualisasikan.")
+    st.subheader("1. Statistik Ringkas")
+    st.metric("Jumlah Ulasan", len(df))
+    st.metric("Skor Rata-rata", round(df['score'].mean(), 2))
 
-# Halaman Model
-elif menu == "Model":
-    st.title("🤖 Model Clustering (K-Means)")
+    st.subheader("2. Distribusi Skor")
+    fig, ax = plt.subplots()
+    sns.countplot(data=df, x='score', palette='viridis', ax=ax)
+    ax.set_title("Distribusi Skor Ulasan")
+    st.pyplot(fig)
 
-    if df_numerical.empty:
-        st.warning("Tidak ada data numerik yang dapat digunakan untuk klastering.")
-    else:
-        # Standardisasi
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(df_numerical)
+    st.subheader("3. Ulasan per Hari")
+    reviews_per_day = df['at'].dt.date.value_counts().sort_index()
+    fig, ax = plt.subplots()
+    reviews_per_day.plot(kind='line', ax=ax)
+    ax.set_title("Jumlah Ulasan per Hari")
+    ax.set_xlabel("Tanggal")
+    ax.set_ylabel("Jumlah")
+    st.pyplot(fig)
 
-        # Elbow Method
-        inertia = []
-        k_range = range(1, 11)
-        for k in k_range:
-            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-            kmeans.fit(scaled_data)
-            inertia.append(kmeans.inertia_)
+    st.subheader("4. Word Cloud Ulasan")
+    text = " ".join(df['content'].dropna().tolist())
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.imshow(wordcloud, interpolation='bilinear')
+    ax.axis("off")
+    st.pyplot(fig)
 
-        st.subheader("📐 Elbow Method")
-        fig, ax = plt.subplots()
-        ax.plot(k_range, inertia, marker='o')
-        ax.set_xlabel("Jumlah Klaster (k)")
-        ax.set_ylabel("Inertia")
-        ax.set_title("Menentukan Jumlah Klaster Optimal")
-        st.pyplot(fig)
+# Filter Data
+elif menu == "Filter Data":
+    st.title("🔍 Filter Ulasan")
 
-        # Slider klaster
-        n_clusters = st.slider("Pilih jumlah klaster", 2, 10, 3)
+    skor = st.slider("Pilih rentang skor", 1, 5, (1, 5))
+    tanggal_mulai = st.date_input("Tanggal mulai", df['at'].min().date())
+    tanggal_akhir = st.date_input("Tanggal akhir", df['at'].max().date())
+    kata_kunci = st.text_input("Cari kata dalam ulasan")
 
-        # KMeans Clustering
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        df_numerical['Cluster'] = kmeans.fit_predict(scaled_data)
+    mask = (df['score'].between(skor[0], skor[1])) & \
+           (df['at'].dt.date >= tanggal_mulai) & \
+           (df['at'].dt.date <= tanggal_akhir)
 
-        # Tambah hasil ke df
-        df['Cluster'] = -1
-        df.loc[df_numerical.index, 'Cluster'] = df_numerical['Cluster']
+    if kata_kunci:
+        mask &= df['content'].str.contains(kata_kunci, case=False, na=False)
 
-        st.subheader("🧾 Hasil Klastering")
-        st.dataframe(df)
+    st.subheader("Hasil Filter")
+    st.dataframe(df[mask])
 
-        # Statistik tiap cluster
-        for cluster_id in range(n_clusters):
-            st.subheader(f"📌 Statistik Cluster {cluster_id}")
-            st.dataframe(df[df['Cluster'] == cluster_id].describe())
-
-# Halaman Prediksi
-elif menu == "Prediksi":
-    st.title("🔮 Prediksi Cluster untuk Data Baru")
-
-    if df_numerical.empty:
-        st.warning("Tidak ada data numerik yang tersedia untuk pelatihan model.")
-    else:
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(df_numerical)
-
-        # Default KMeans
-        n_clusters = 3
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        kmeans.fit(scaled_data)
-
-        st.subheader("Masukkan Nilai Fitur:")
-        input_data = []
-        for col in numerical_cols:
-            value = st.number_input(f"{col}", value=float(df[col].mean()))
-            input_data.append(value)
-
-        if st.button("Prediksi Klaster"):
-            input_scaled = scaler.transform([input_data])
-            cluster = kmeans.predict(input_scaled)[0]
-            st.success(f"✅ Data termasuk ke dalam Cluster: {cluster}")
+# Tabel Interaktif
+elif menu == "Tabel Interaktif":
+    st.title("📋 Tabel Interaktif")
+    st.dataframe(df.sort_values(by="at", ascending=False))
