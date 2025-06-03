@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 
 # Konfigurasi halaman
 st.set_page_config(page_title="Clustering App", layout="wide")
@@ -12,21 +12,38 @@ url = "https://raw.githubusercontent.com/Jujun8/sansan/main/data%20proyek.csv"
 df = pd.read_csv(url)
 
 # Sidebar menu
-menu = st.sidebar.selectbox("Pilih Halaman", ["Dashboard", "Model", "Prediksi"])
+menu = st.sidebar.selectbox("📁 Navigasi", ["Halaman Awal", "Model", "Prediksi"])
 
-# Halaman Dashboard
-if menu == "Dashboard":
+# Seleksi kolom numerik
+numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns
+df_numerical = df[numerical_cols].dropna()
+
+# Halaman Awal
+if menu == "Halaman Awal":
     st.title("📊 Dashboard Data Proyek")
-    st.subheader("Tampilan Data")
+
+    st.subheader("Dataset")
     st.dataframe(df)
+
+    st.subheader("Karakteristik Data (Statistik Deskriptif)")
+    st.dataframe(df[numerical_cols].describe())
+
+    st.subheader("Visualisasi Data")
+    if len(numerical_cols) >= 2:
+        col1 = st.selectbox("Pilih fitur X", numerical_cols, index=0)
+        col2 = st.selectbox("Pilih fitur Y", numerical_cols, index=1)
+        fig, ax = plt.subplots()
+        ax.scatter(df[col1], df[col2], alpha=0.7)
+        ax.set_xlabel(col1)
+        ax.set_ylabel(col2)
+        ax.set_title(f'Scatter Plot: {col1} vs {col2}')
+        st.pyplot(fig)
+    else:
+        st.info("Tidak cukup fitur numerik untuk divisualisasikan.")
 
 # Halaman Model
 elif menu == "Model":
     st.title("🤖 Model Clustering (K-Means)")
-
-    # Seleksi kolom numerik
-    numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns
-    df_numerical = df[numerical_cols].dropna()
 
     if df_numerical.empty:
         st.warning("Tidak ada data numerik yang dapat digunakan untuk klastering.")
@@ -35,7 +52,7 @@ elif menu == "Model":
         scaler = StandardScaler()
         scaled_data = scaler.fit_transform(df_numerical)
 
-        # Tentukan jumlah cluster optimal dengan Elbow Method
+        # Elbow Method
         inertia = []
         k_range = range(1, 11)
         for k in k_range:
@@ -43,35 +60,55 @@ elif menu == "Model":
             kmeans.fit(scaled_data)
             inertia.append(kmeans.inertia_)
 
-        # Plot Elbow
-        st.subheader("Elbow Method")
+        st.subheader("📐 Elbow Method")
         fig, ax = plt.subplots()
         ax.plot(k_range, inertia, marker='o')
-        ax.set_title('Elbow Method')
-        ax.set_xlabel('Jumlah Klaster (k)')
-        ax.set_ylabel('Inertia')
+        ax.set_xlabel("Jumlah Klaster (k)")
+        ax.set_ylabel("Inertia")
+        ax.set_title("Menentukan Jumlah Klaster Optimal")
         st.pyplot(fig)
 
-        # Pilih jumlah klaster
+        # Slider klaster
         n_clusters = st.slider("Pilih jumlah klaster", 2, 10, 3)
 
-        # Jalankan klastering
+        # KMeans Clustering
         kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
         df_numerical['Cluster'] = kmeans.fit_predict(scaled_data)
 
-        # Gabungkan ke data asli
+        # Tambah hasil ke df
         df['Cluster'] = -1
         df.loc[df_numerical.index, 'Cluster'] = df_numerical['Cluster']
 
-        st.subheader("Hasil Klastering")
+        st.subheader("🧾 Hasil Klastering")
         st.dataframe(df)
 
-        # Statistik per klaster
+        # Statistik tiap cluster
         for cluster_id in range(n_clusters):
             st.subheader(f"📌 Statistik Cluster {cluster_id}")
             st.dataframe(df[df['Cluster'] == cluster_id].describe())
 
 # Halaman Prediksi
 elif menu == "Prediksi":
-    st.title("🔮 Prediksi (Coming Soon)")
-    st.info("Fitur prediksi akan ditambahkan di masa depan.")
+    st.title("🔮 Prediksi Cluster untuk Data Baru")
+
+    if df_numerical.empty:
+        st.warning("Tidak ada data numerik yang tersedia untuk pelatihan model.")
+    else:
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(df_numerical)
+
+        # Default KMeans
+        n_clusters = 3
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        kmeans.fit(scaled_data)
+
+        st.subheader("Masukkan Nilai Fitur:")
+        input_data = []
+        for col in numerical_cols:
+            value = st.number_input(f"{col}", value=float(df[col].mean()))
+            input_data.append(value)
+
+        if st.button("Prediksi Klaster"):
+            input_scaled = scaler.transform([input_data])
+            cluster = kmeans.predict(input_scaled)[0]
+            st.success(f"✅ Data termasuk ke dalam Cluster: {cluster}")
