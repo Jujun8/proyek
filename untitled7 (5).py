@@ -297,8 +297,7 @@ elif menu == "Informasi Aplikasi":
 
     st.header("Data yang Digunakan")
     st.write(f"""
-    Dataset yang digunakan dalam aplikasi ini adalah `data proyek.csv` yang bersumber dari:
-    [{url}]({url}).
+    Dataset yang digunakan dalam aplikasi ini di ambil dari Kaggle.
     Dataset ini berisi ulasan pengguna, termasuk nama pengguna, skor yang diberikan, tanggal ulasan, dan konten ulasan.
     """)
     st.write("""
@@ -334,8 +333,7 @@ elif menu == "Informasi Aplikasi":
 
     st.header("Tentang Proyek Ini")
     st.write("""
-    Aplikasi ini dibuat sebagai bagian dari proyek analisis data (Anda bisa menambahkan detail spesifik tentang proyek Anda di sini,
-    misalnya nama mata kuliah, tujuan khusus proyek, atau nama pengembang).
+    Aplikasi ini dibuat sebagai bagian dari proyek mata kuliah Data Mining.
     Harapannya, aplikasi ini dapat memberikan gambaran bagaimana teknik clustering dapat diterapkan 
     untuk mendapatkan wawasan dari data tekstual seperti ulasan pengguna.
     """)
