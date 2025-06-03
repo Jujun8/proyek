@@ -5,7 +5,7 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import numpy as np
-import csv # Import modul csv untuk konstanta quoting
+import csv
 
 # Konfigurasi halaman
 st.set_page_config(page_title="Clustering App", layout="wide")
@@ -14,7 +14,6 @@ st.set_page_config(page_title="Clustering App", layout="wide")
 @st.cache_data
 def load_data(url):
     try:
-        # Coba dengan engine python dan quoting yang lebih permisif
         df = pd.read_csv(url, engine='python', quoting=csv.QUOTE_MINIMAL, on_bad_lines='skip')
     except pd.errors.ParserError as pe:
         st.error(f"Pandas ParserError saat membaca CSV: {pe}")
@@ -23,60 +22,48 @@ def load_data(url):
             df = pd.read_csv(url, engine='python', quoting=csv.QUOTE_NONE, escapechar='\\', on_bad_lines='skip')
         except Exception as e:
             st.error(f"Gagal membaca CSV bahkan dengan parameter berbeda: {e}")
-            return pd.DataFrame() # Kembalikan DataFrame kosong jika gagal total
+            return pd.DataFrame()
     except Exception as e:
         st.error(f"Terjadi kesalahan umum saat memuat data: {e}")
         return pd.DataFrame()
 
-
-    # Pastikan kolom 'content' ada sebelum diproses
     if 'content' in df.columns:
         df['content'] = df['content'].astype(str)
         df['review_length'] = df['content'].str.len()
         df['word_count'] = df['content'].str.split().str.len()
     else:
-        st.warning("Kolom 'content' tidak ditemukan dalam CSV. Fitur 'review_length' dan 'word_count' tidak akan ditambahkan.")
-        df['review_length'] = 0 # default jika kolom tidak ada
-        df['word_count'] = 0   # default jika kolom tidak ada
+        st.warning("Kolom 'content' tidak ditemukan. Fitur 'review_length' dan 'word_count' tidak akan ditambahkan.")
+        df['review_length'] = 0
+        df['word_count'] = 0
 
-    # Pastikan kolom 'score' ada dan numerik
     if 'score' not in df.columns:
         st.warning("Kolom 'score' tidak ditemukan. Model dan beberapa visualisasi mungkin tidak berfungsi dengan baik.")
-        # Anda bisa membuat kolom score dummy jika perlu, atau membiarkannya
-        # df['score'] = 3 # Contoh dummy score
     else:
-        # Coba konversi 'score' ke numerik, error diubah jadi NaN lalu bisa di-drop/impute
         df['score'] = pd.to_numeric(df['score'], errors='coerce')
-
-
     return df
 
 # Load data
 url = "https://raw.githubusercontent.com/Jujun8/sansan/main/data%20proyek.csv"
 
-# df_original_raw juga menggunakan cara baca yang lebih robust
 try:
     df_original_raw = pd.read_csv(url, engine='python', quoting=csv.QUOTE_MINIMAL, on_bad_lines='skip')
 except pd.errors.ParserError:
     try:
         df_original_raw = pd.read_csv(url, engine='python', quoting=csv.QUOTE_NONE, escapechar='\\', on_bad_lines='skip')
     except Exception:
-        df_original_raw = pd.DataFrame() # DataFrame kosong jika gagal
+        df_original_raw = pd.DataFrame()
 except Exception:
     df_original_raw = pd.DataFrame()
 
 df_processed = load_data(url)
 
-# --- Sisa kode tetap sama ---
-# Pastikan df_processed tidak kosong sebelum melanjutkan
 if df_processed.empty:
     st.error("Gagal memuat atau memproses data. Aplikasi tidak dapat melanjutkan.")
-    st.stop() # Hentikan eksekusi aplikasi jika data gagal dimuat
+    st.stop()
 
-# Pilih kolom numerik dari DataFrame yang sudah diproses
 numerical_cols = df_processed.select_dtypes(include=[np.number]).columns.tolist()
 df_numerical = df_processed[numerical_cols].copy()
-df_numerical.dropna(inplace=True) # Hapus NaN dari data numerik yang akan digunakan untuk clustering
+df_numerical.dropna(inplace=True)
 
 # Sidebar menu
 menu = st.sidebar.selectbox("📁 Navigasi", ["Halaman Awal", "Model", "Prediksi"])
@@ -87,27 +74,38 @@ if menu == "Halaman Awal":
 
     st.subheader("Dataset Asli (Mentah)")
     if not df_original_raw.empty:
-        st.dataframe(df_original_raw.head())
+        st.markdown(f"Menampilkan **{len(df_original_raw)}** baris data asli. *Jika data sangat besar, ini bisa lambat.*")
+        # Tampilkan seluruh DataFrame asli
+        st.dataframe(df_original_raw)
+        # Anda bisa menambahkan opsi untuk melihat hanya head:
+        # if st.checkbox("Tampilkan hanya 5 baris pertama (head) data asli?", value=True, key="show_head_raw"):
+        #     st.dataframe(df_original_raw.head())
+        # else:
+        #     st.dataframe(df_original_raw)
     else:
         st.warning("Gagal menampilkan dataset asli mentah.")
 
 
     st.subheader("Dataset Setelah Penambahan Fitur Dasar ('review_length', 'word_count')")
     if not df_processed.empty:
-        st.dataframe(df_processed.head())
+        st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses. *Jika data sangat besar, ini bisa lambat.*")
+        # Tampilkan seluruh DataFrame yang diproses
+        st.dataframe(df_processed)
+        # Anda bisa menambahkan opsi untuk melihat hanya head:
+        # if st.checkbox("Tampilkan hanya 5 baris pertama (head) data yang diproses?", value=True, key="show_head_processed"):
+        #     st.dataframe(df_processed.head())
+        # else:
+        #     st.dataframe(df_processed)
     else:
         st.warning("Gagal menampilkan dataset yang diproses.")
 
-
     st.subheader("Karakteristik Data (Statistik Deskriptif untuk Kolom Numerik)")
-    # Gunakan numerical_cols yang didefinisikan dari df_processed
     if not df_processed.empty and numerical_cols and not df_processed[numerical_cols].empty:
         st.dataframe(df_processed[numerical_cols].describe())
     else:
         st.info("Tidak ada kolom numerik untuk ditampilkan statistiknya atau data gagal dimuat.")
 
     st.subheader("Visualisasi Data")
-    # Filter numerical_cols yang ada di df_processed dan punya variasi
     valid_numerical_cols_for_viz = []
     if not df_processed.empty:
         valid_numerical_cols_for_viz = [col for col in numerical_cols if col in df_processed.columns and df_processed[col].nunique() > 1]
@@ -127,12 +125,11 @@ if menu == "Halaman Awal":
                     col2_default_index = 0
                     if 'review_length' in col2_options:
                          col2_default_index = col2_options.index('review_length')
-                    elif len(col2_options) > 0: # fallback jika 'review_length' tidak ada
+                    elif len(col2_options) > 0:
                         col2_default_index = 0
 
                     col2 = st.selectbox("Pilih fitur Y", col2_options, index=col2_default_index, key="scatter_y")
                     fig, ax = plt.subplots()
-                    # Gunakan df_processed untuk plotting
                     sns.scatterplot(data=df_processed, x=col1, y=col2, hue='score' if 'score' in df_processed.columns else None, alpha=0.7, ax=ax)
                     ax.set_xlabel(col1)
                     ax.set_ylabel(col2)
@@ -157,7 +154,7 @@ if menu == "Halaman Awal":
             default_box_col_index = 0
             if 'review_length' in valid_numerical_cols_for_viz:
                 default_box_col_index = valid_numerical_cols_for_viz.index('review_length')
-            elif 'score' in valid_numerical_cols_for_viz: # fallback
+            elif 'score' in valid_numerical_cols_for_viz:
                  default_box_col_index = valid_numerical_cols_for_viz.index('score')
             selected_col_box = st.selectbox("Pilih fitur", valid_numerical_cols_for_viz, index=default_box_col_index, key="box_select")
             fig, ax = plt.subplots()
@@ -216,15 +213,20 @@ elif menu == "Model":
 
         df_processed_with_clusters = df_processed.copy()
         df_processed_with_clusters['Cluster'] = -1
-        # Pastikan index cocok saat menggabungkan
-        # Jika df_numerical adalah subset dari df_processed yang indexnya sudah di-reset, ini bisa jadi masalah.
-        # Lebih aman adalah jika df_numerical menjaga index aslinya dari df_processed
         df_processed_with_clusters.loc[df_numerical_clustered.index, 'Cluster'] = df_numerical_clustered['Cluster']
 
-
         st.subheader(f"🧾 Hasil Klastering dengan {n_clusters_selected} Klaster")
-        st.dataframe(df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1].head())
-        st.write(f"Menampilkan {len(df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1])} baris yang berhasil diklaster.")
+        # Tampilkan seluruh DataFrame yang berhasil diklaster (jika tidak terlalu besar)
+        # atau pertimbangkan untuk menampilkan head() lagi di sini jika datanya sangat besar
+        clustered_rows_df = df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1]
+        st.markdown(f"Menampilkan **{len(clustered_rows_df)}** baris yang berhasil diklaster.")
+        if len(clustered_rows_df) > 1000: # Batas contoh
+            st.dataframe(clustered_rows_df.head(100))
+            st.caption("Menampilkan 100 baris pertama karena jumlah data yang diklaster besar.")
+        else:
+            st.dataframe(clustered_rows_df)
+        # st.dataframe(df_processed_with_clusters[df_processed_with_clusters['Cluster'] != -1]) # Versi lama menampilkan semua
+
 
         st.subheader("Statistik Tiap Klaster (Berdasarkan Fitur Numerik yang Digunakan Model)")
         for cluster_id in range(n_clusters_selected):
@@ -251,7 +253,7 @@ elif menu == "Prediksi":
 
     if 'kmeans_model' not in st.session_state or 'scaler_model' not in st.session_state or 'numerical_cols_model' not in st.session_state:
         st.warning("Model belum dilatih. Silakan ke halaman 'Model' terlebih dahulu untuk melatih model.")
-    elif df_numerical.empty: # Tambahan cek jika df_numerical kosong di state ini
+    elif df_numerical.empty:
         st.warning("Tidak ada data numerik yang valid dari dataset utama. Model tidak bisa digunakan untuk prediksi.")
     else:
         kmeans_trained = st.session_state.kmeans_model
@@ -262,7 +264,7 @@ elif menu == "Prediksi":
         st.markdown(f"Model dilatih menggunakan fitur berikut: `{'`, `'.join(model_numerical_cols)}`")
 
         input_data_pred = {}
-        df_for_defaults = df_numerical # df_numerical adalah data yang digunakan untuk fit scaler
+        df_for_defaults = df_numerical
 
         for col_pred in model_numerical_cols:
             default_val_pred = 0.0
