@@ -175,7 +175,7 @@ if menu == "Halaman Awal":
 
 
 # ====================== HALAMAN MODEL SENTIMEN ======================
-elif menu == "Model Sentimen":
+elif menu == "Model":
     st.title("🤖 Model Performance: Klasifikasi Sentimen (Multi-class)")
 
     if df_processed.empty or 'cleaned_content' not in df_processed.columns or 'Sentiment_Label' not in df_processed.columns:
@@ -284,7 +284,7 @@ elif menu == "Model Sentimen":
             st.error(f"Error saat evaluasi model: {e}")
 
 # ====================== HALAMAN PREDIKSI SENTIMEN ======================
-elif menu == "Prediksi Sentimen":
+elif menu == "Prediksi":
     st.title("🔮 Prediksi Sentimen untuk Komentar Baru")
 
     if 'sentiment_model_pipeline' not in st.session_state:
@@ -392,3 +392,14 @@ elif menu == "Informasi Aplikasi":
     """)
     st.markdown("---")
     st.caption("Versi Aplikasi: 1.1.0")
+
+elif menu == "Anggota Kelompok":
+   
+    st.header("Anggota Kelompok 9")
+    st.markdown("---")
+    st.write("""
+    IDA AYU PRADIPTA NARASWARI YONI (2304030049).
+    AGUSTINUS JUAN JOSEPH ABANAT (2304030051).
+    ERA FEBI SULISTIAWATI (2304030076).
+    SHIERA NABILA FIRNANDA  (2304030077).
+    """)
