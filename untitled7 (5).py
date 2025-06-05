@@ -397,6 +397,5 @@ elif menu == "Anggota Kelompok":
     - SHIERA NABILA FIRNANDA (2304030077)
     """)
     st.markdown("---")
-    # Tambahkan informasi tambahan jika perlu, misalnya nama mata kuliah atau dosen
-    # st.write("Proyek Mata Kuliah: Data Mining")
-    # st.write("Dosen Pengampu: [Nama Dosen Anda]")
+    
+
