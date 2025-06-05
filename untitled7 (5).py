@@ -112,7 +112,7 @@ numerical_cols_for_viz = [col for col in numerical_cols_original if col in df_pr
 
 
 # Sidebar menu
-menu_options = ["Halaman Awal", "Model Sentimen", "Prediksi Sentimen", "Informasi Aplikasi"]
+menu_options = ["Halaman Awal", "Model", "Prediksi", "Informasi Aplikasi", "Anggota Kelompok" ]
 menu = st.sidebar.selectbox("📁 Navigasi", menu_options)
 
 # ====================== HALAMAN AWAL ======================
