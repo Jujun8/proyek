@@ -349,6 +349,7 @@ elif menu == "Informasi Aplikasi":
     Aplikasi ini dibangun untuk melakukan analisis sentimen pada dataset ulasan pengguna. 
     Tujuannya adalah untuk mengklasifikasikan ulasan sebagai 'Positif', 'Negatif', atau 'Netral' 
     berdasarkan konten teksnya. Ini dapat membantu memahami opini publik atau feedback pelanggan secara lebih detail.
+    Aplikasi ini juga dibangun dengan tujuan untuk menyelesaikan proyek mata kuliah Data Mining.
     """)
 
     st.header("Data yang Digunakan")
@@ -383,13 +384,8 @@ elif menu == "Informasi Aplikasi":
     2.  **Halaman Awal**: Menampilkan seluruh dataset mentah, sampel data yang diproses, distribusi sentimen (termasuk Netral), dan visualisasi fitur.
     3.  **Model Sentimen**: Melatih model multi-class dan menampilkan kinerjanya.
     4.  **Prediksi Sentimen**: Memasukkan teks baru untuk diprediksi sentimennya (Positif, Negatif, atau Netral).
-    5.  **Informasi Aplikasi**: Penjelasan mengenai aplikasi.
-    """)
+  
 
-    st.header("Tentang Proyek Ini")
-    st.write("""
-    Aplikasi ini adalah contoh bagaimana teknik NLP dan machine learning 
-    dapat diterapkan untuk analisis sentimen multi-class.
     """)
     st.markdown("---")
-    st.caption("Versi Aplikasi: 2.2.0 (Multi-class Sentiment Analysis & Full Raw Data)")
+    st.caption("Versi Aplikasi: 1.1.0")
