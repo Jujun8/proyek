@@ -40,10 +40,11 @@ def load_data(url):
         return pd.DataFrame()
 
     if 'content' in df.columns:
-        df['content'] = df['content'].astype(str).fillna('')
-        df['cleaned_content'] = df['content'].apply(simple_text_cleaner)
-       df['panjang karakter'] = df['cleaned_content'].str.len()
-df['jumlah kata'] = df['cleaned_content'].str.split().str.len()
+    df['content'] = df['content'].astype(str).fillna('')
+    df['cleaned_content'] = df['content'].apply(simple_text_cleaner)
+    df['panjang karakter'] = df['cleaned_content'].str.len()
+    df['jumlah kata'] = df['cleaned_content'].str.split().str.len()
+
 
     else:
         st.warning("Kolom 'content' tidak ditemukan.")
