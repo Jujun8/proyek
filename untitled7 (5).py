@@ -42,10 +42,9 @@ def load_data(url):
     if 'content' in df.columns:
        df['content'] = df['content'].astype(str).fillna('')
        df['cleaned_content'] = df['content'].apply(simple_text_cleaner)
+       # Menggunakan nama kolom baru
        df['panjang karakter'] = df['cleaned_content'].str.len()
        df['jumlah kata'] = df['cleaned_content'].str.split().str.len()
-
-
     else:
         st.warning("Kolom 'content' tidak ditemukan.")
         df['cleaned_content'] = ""
@@ -55,24 +54,22 @@ def load_data(url):
     if 'score' not in df.columns:
         st.error("Kolom 'score' tidak ditemukan. Tidak dapat membuat target sentimen.")
         df['Sentiment'] = 'Unknown'
-        df['Sentiment_Label'] = -1 # Label default untuk unknown
+        df['Sentiment_Label'] = -1
     else:
         df['score'] = pd.to_numeric(df['score'], errors='coerce')
         df.dropna(subset=['score'], inplace=True)
         
-        # Mendefinisikan sentimen: Negatif (0), Netral (1), Positif (2)
         conditions = [
-            (df['score'] <= 2),  # Skor 1, 2 -> Negatif
-            (df['score'] == 3),  # Skor 3 -> Netral
-            (df['score'] >= 4)   # Skor 4, 5 -> Positif
+            (df['score'] <= 2),
+            (df['score'] == 3),
+            (df['score'] >= 4)
         ]
         choices_text = ['Negatif', 'Netral', 'Positif']
-        choices_label = [0, 1, 2] # Negatif: 0, Netral: 1, Positif: 2
+        choices_label = [0, 1, 2]
 
         df['Sentiment'] = np.select(conditions, choices_text, default='Unknown')
-        df['Sentiment_Label'] = np.select(conditions, choices_label, default=-1) # Assign -1 untuk yang tidak masuk kategori
+        df['Sentiment_Label'] = np.select(conditions, choices_label, default=-1)
 
-        # Filter out 'Unknown' sentiments if any were not caught by conditions
         df = df[df['Sentiment'] != 'Unknown']
         
         if df.empty:
@@ -106,13 +103,14 @@ if df_processed.empty:
     st.error("Gagal memuat atau memproses data. Aplikasi tidak dapat melanjutkan.")
     st.stop()
 
+# Menggunakan nama kolom baru
 numerical_cols_original = ['panjang karakter', 'jumlah kata']
-
 numerical_cols_for_viz = [col for col in numerical_cols_original if col in df_processed.columns]
 
 
 # Sidebar menu
-menu_options = ["Halaman Awal", "Model", "Prediksi", "Informasi Aplikasi", ]
+# Menambahkan "Anggota Kelompok" ke menu jika belum ada dan menyesuaikan nama menu lain jika perlu
+menu_options = ["Halaman Awal", "Model", "Prediksi", "Informasi Aplikasi", "Anggota Kelompok"]
 menu = st.sidebar.selectbox("📁 Navigasi", menu_options)
 
 # ====================== HALAMAN AWAL ======================
@@ -122,7 +120,6 @@ if menu == "Halaman Awal":
     st.subheader("Dataset Asli (Mentah)")
     if not df_original_raw.empty:
         st.markdown(f"Menampilkan **{len(df_original_raw)}** baris data asli.")
-        # PERUBAHAN 1: Menampilkan seluruh df_original_raw
         st.dataframe(df_original_raw) 
     else:
         st.warning("Gagal menampilkan dataset asli mentah.")
@@ -130,17 +127,17 @@ if menu == "Halaman Awal":
     st.subheader("Dataset Setelah Pemrosesan dan Pembuatan Fitur")
     if not df_processed.empty:
         st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses.")
-        st.dataframe(df_processed[['content', 'score', 'cleaned_content', 'panjang karakter', 'jumlah kata', 'Sentiment', 'Sentiment_Label']].)
+        # PERUBAHAN: Menampilkan seluruh df_processed untuk bagian ini
+        st.dataframe(df_processed[['content', 'score', 'cleaned_content', 'panjang karakter', 'jumlah kata', 'Sentiment', 'Sentiment_Label']])
     else:
         st.warning("Gagal menampilkan dataset yang diproses.")
 
     st.subheader("Distribusi Sentimen")
     if 'Sentiment' in df_processed.columns and not df_processed.empty:
         fig_sentiment, ax_sentiment = plt.subplots()
-        # PERUBAHAN 2.1: Menambahkan Netral ke palette
         palette_sentiment = {'Positif': 'green', 'Negatif': 'red', 'Netral': 'blue'}
         sns.countplot(x='Sentiment', data=df_processed, ax=ax_sentiment, 
-                      order=['Negatif', 'Netral', 'Positif'], # Tentukan urutan jika diinginkan
+                      order=['Negatif', 'Netral', 'Positif'], 
                       palette=palette_sentiment)
         ax_sentiment.set_title("Distribusi Sentimen Ulasan")
         st.pyplot(fig_sentiment)
@@ -149,9 +146,11 @@ if menu == "Halaman Awal":
 
     st.subheader("Karakteristik Data (Statistik Deskriptif untuk Fitur Tambahan)")
     if not df_processed.empty and numerical_cols_for_viz and not df_processed[numerical_cols_for_viz].empty:
+        # Menggunakan nama kolom baru untuk deskripsi
         st.dataframe(df_processed[numerical_cols_for_viz + (['score'] if 'score' in df_processed.columns else [])].describe())
     else:
-        st.info("Tidak ada kolom numerik ('review_length', 'word_count') untuk ditampilkan statistiknya atau data gagal dimuat.")
+        # Menggunakan nama kolom baru dalam pesan info
+        st.info("Tidak ada kolom numerik ('panjang karakter', 'jumlah kata') untuk ditampilkan statistiknya atau data gagal dimuat.")
 
     st.subheader("Visualisasi Data Tambahan")
     if not df_processed.empty and numerical_cols_for_viz:
@@ -175,6 +174,7 @@ if menu == "Halaman Awal":
 
 
 # ====================== HALAMAN MODEL ======================
+# (Nama menu sudah diubah menjadi "Model" dari "Model Sentimen" di menu_options)
 elif menu == "Model":
     st.title("🤖 Model Performance: Klasifikasi Sentimen (Multi-class)")
 
@@ -184,7 +184,7 @@ elif menu == "Model":
     
     df_model_data = df_processed.dropna(subset=['cleaned_content', 'Sentiment_Label'])
     df_model_data = df_model_data[df_model_data['cleaned_content'].str.strip() != '']
-    df_model_data = df_model_data[df_model_data['Sentiment_Label'] != -1] # Pastikan hanya label valid
+    df_model_data = df_model_data[df_model_data['Sentiment_Label'] != -1] 
 
     if df_model_data.empty:
         st.error("Tidak ada data yang valid untuk melatih model setelah filter tambahan.")
@@ -193,11 +193,10 @@ elif menu == "Model":
     X = df_model_data['cleaned_content']
     y = df_model_data['Sentiment_Label']
 
-    # PERUBAHAN 2.2: Cek minimal 3 kelas untuk stratify jika multiclass
-    min_samples_per_class_for_stratify = 2 # atau lebih tinggi jika diperlukan oleh stratify
+    min_samples_per_class_for_stratify = 2 
     can_stratify = len(y.unique()) >= 3 and y.value_counts().min() >= min_samples_per_class_for_stratify
 
-    if len(X) < 3 or len(y.unique()) < 3 : # Butuh setidaknya 3 sampel dan 3 kelas untuk multiclass yang berarti
+    if len(X) < 3 or len(y.unique()) < 3 : 
         st.error(f"Tidak cukup data atau variasi kelas untuk melatih model multi-class. Jumlah data: {len(X)}, Jumlah kelas unik: {len(y.unique())}")
         st.stop()
         
@@ -210,7 +209,6 @@ elif menu == "Model":
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
 
     selected_model_name = "Logistic Regression" 
-    # Untuk multiclass, LogisticRegression default ke 'ovr' (one-vs-rest)
     classifier = LogisticRegression(random_state=42, solver='liblinear', C=1.0, multi_class='ovr') 
     
     text_processor = TfidfVectorizer(max_features=3000, ngram_range=(1,2))
@@ -250,7 +248,6 @@ elif menu == "Model":
             y_pred = model_trained.predict(X_test_eval)
             
             accuracy = accuracy_score(y_test_eval, y_pred)
-            # 'weighted' average masih cocok untuk multiclass
             precision = precision_score(y_test_eval, y_pred, average='weighted', zero_division=0)
             recall = recall_score(y_test_eval, y_pred, average='weighted', zero_division=0)
             f1 = f1_score(y_test_eval, y_pred, average='weighted', zero_division=0)
@@ -266,13 +263,12 @@ elif menu == "Model":
             st.markdown("---") 
 
             st.text("Laporan Klasifikasi Lengkap:")
-            # PERUBAHAN 2.3: Target names untuk multiclass
             target_names = ['Negatif (0)', 'Netral (1)', 'Positif (2)'] 
             report_dict = classification_report(y_test_eval, y_pred, target_names=target_names, output_dict=True, zero_division=0, labels=[0,1,2])
             st.dataframe(pd.DataFrame(report_dict).transpose())
 
             st.text("Matriks Konfusi:")
-            cm = confusion_matrix(y_test_eval, y_pred, labels=[0,1,2]) # Pastikan urutan label
+            cm = confusion_matrix(y_test_eval, y_pred, labels=[0,1,2]) 
             fig_cm, ax_cm = plt.subplots()
             sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                         xticklabels=target_names, yticklabels=target_names, ax=ax_cm)
@@ -284,11 +280,12 @@ elif menu == "Model":
             st.error(f"Error saat evaluasi model: {e}")
 
 # ====================== HALAMAN PREDIKSI ======================
+# (Nama menu sudah diubah menjadi "Prediksi" dari "Prediksi Sentimen" di menu_options)
 elif menu == "Prediksi":
     st.title("🔮 Prediksi Sentimen untuk Komentar Baru")
 
     if 'sentiment_model_pipeline' not in st.session_state:
-        st.warning("Model belum dilatih. Silakan ke halaman 'Model Sentimen' terlebih dahulu untuk melatih model.")
+        st.warning("Model belum dilatih. Silakan ke halaman 'Model' terlebih dahulu untuk melatih model.")
     else:
         model_to_predict = st.session_state.sentiment_model_pipeline
         
@@ -308,7 +305,6 @@ elif menu == "Prediksi":
                         prediction_proba = model_to_predict.predict_proba([cleaned_comment])[0]
                         prediction_label = model_to_predict.predict([cleaned_comment])[0]
 
-                        # PERUBAHAN 2.4: Map sentimen untuk multiclass
                         sentiment_map = {2: 'Positif', 0: 'Negatif', 1: 'Netral'}
                         predicted_sentiment_text = sentiment_map.get(prediction_label, "Tidak diketahui")
 
@@ -318,16 +314,12 @@ elif menu == "Prediksi":
                         elif predicted_sentiment_text == 'Negatif':
                             st.error(f"Sentimen: **{predicted_sentiment_text}**")
                         elif predicted_sentiment_text == 'Netral':
-                            st.info(f"Sentimen: **{predicted_sentiment_text}**") # Warna biru untuk netral
+                            st.info(f"Sentimen: **{predicted_sentiment_text}**") 
                         else:
                             st.warning(f"Sentimen: **{predicted_sentiment_text}**")
                         
                         st.write("Probabilitas:")
-                        # Pastikan urutan probabilitas sesuai dengan kelas 0, 1, 2
-                        # Urutan probabilitas dari predict_proba() biasanya sesuai dengan model.classes_
-                        # Untuk LogisticRegression, ini adalah urutan numerik dari label.
-                        # Jika model.classes_ adalah [0, 1, 2] maka proba[0] adalah Negatif, proba[1] Netral, proba[2] Positif
-                        classes_order = model_to_predict.classes_ # Seharusnya [0, 1, 2]
+                        classes_order = model_to_predict.classes_ 
                         
                         st.write(f"- Negatif (skor 1-2): {prediction_proba[np.where(classes_order == 0)[0][0]]:.2%}")
                         st.write(f"- Netral (skor 3): {prediction_proba[np.where(classes_order == 1)[0][0]]:.2%}")
@@ -384,22 +376,27 @@ elif menu == "Informasi Aplikasi":
     st.header("Cara Menggunakan Aplikasi")
     st.write("""
     1.  **Navigasi**: Gunakan menu dropdown di sidebar kiri.
-    2.  **Halaman Awal**: Menampilkan seluruh dataset mentah, sampel data yang diproses, distribusi sentimen (termasuk Netral), dan visualisasi fitur.
-    3.  **Model Sentimen**: Melatih model multi-class dan menampilkan kinerjanya.
-    4.  **Prediksi Sentimen**: Memasukkan teks baru untuk diprediksi sentimennya (Positif, Negatif, atau Netral).
-  
-
+    2.  **Halaman Awal**: Menampilkan seluruh dataset mentah, seluruh data yang diproses, distribusi sentimen (termasuk Netral), dan visualisasi fitur.
+    3.  **Model**: Melatih model multi-class dan menampilkan kinerjanya.
+    4.  **Prediksi**: Memasukkan teks baru untuk diprediksi sentimennya (Positif, Negatif, atau Netral).
+    5.  **Informasi Aplikasi**: Penjelasan mengenai aplikasi.
+    6.  **Anggota Kelompok**: Menampilkan nama anggota kelompok.
     """)
     st.markdown("---")
     st.caption("Versi Aplikasi: 1.1.0")
 
+# ====================== HALAMAN ANGGOTA KELOMPOK ======================
 elif menu == "Anggota Kelompok":
-   
-    st.header("Anggota Kelompok 9")
+    st.title("👥 Anggota Kelompok") # Judul halaman yang lebih baik
+    st.header("Kelompok 9 - Data Mining") # Subheader yang lebih informatif
     st.markdown("---")
     st.write("""
-    - IDA AYU PRADIPTA NARASWARI YONI (2304030049).
-    - AGUSTINUS JUAN JOSEPH ABANAT (2304030051).
-    - ERA FEBI SULISTIAWATI (2304030076).
-    - SHIERA NABILA FIRNANDA  (2304030077).
+    - IDA AYU PRADIPTA NARASWARI YONI (2304030049)
+    - AGUSTINUS JUAN JOSEPH ABANAT (2304030051)
+    - ERA FEBI SULISTIAWATI (2304030076)
+    - SHIERA NABILA FIRNANDA (2304030077)
     """)
+    st.markdown("---")
+    # Tambahkan informasi tambahan jika perlu, misalnya nama mata kuliah atau dosen
+    # st.write("Proyek Mata Kuliah: Data Mining")
+    # st.write("Dosen Pengampu: [Nama Dosen Anda]")
