@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler # Tidak digunakan lagi di versi sentimen ini
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression # Contoh model klasifikasi
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, precision_score, recall_score, f1_score
 from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
+# from sklearn.compose import ColumnTransformer # Tidak digunakan lagi
 import numpy as np
 import csv
 import re # Untuk pembersihan teks dasar
@@ -60,24 +60,18 @@ def load_data(url):
         df['score'] = pd.to_numeric(df['score'], errors='coerce')
         df.dropna(subset=['score'], inplace=True) # Hapus baris jika score NaN setelah konversi
         
-        # Membuat target sentimen: 1,2 -> Negatif (0), 4,5 -> Positif (1)
-        # Skor 3 bisa diabaikan atau dikategorikan (misal, netral)
-        # Untuk binary classification, kita akan abaikan skor 3 atau assign
         conditions = [
             (df['score'] <= 2),
             (df['score'] >= 4)
         ]
         choices = ['Negatif', 'Positif']
         df['Sentiment'] = np.select(conditions, choices, default='Netral')
-        # Filter hanya untuk Positif dan Negatif untuk model binary
         df = df[df['Sentiment'].isin(['Positif', 'Negatif'])]
         if df.empty:
             st.error("Tidak ada data valid untuk sentimen Positif/Negatif setelah pemrosesan skor.")
             return pd.DataFrame()
         df['Sentiment_Label'] = df['Sentiment'].map({'Positif': 1, 'Negatif': 0})
 
-
-    # Hapus baris dengan 'cleaned_content' yang kosong setelah pembersihan, karena ini penting untuk TF-IDF
     df = df[df['cleaned_content'].str.strip() != '']
     if df.empty:
         st.error("Tidak ada data dengan konten teks yang valid setelah pembersihan.")
@@ -88,7 +82,6 @@ def load_data(url):
 # Load data
 url = "https://raw.githubusercontent.com/Jujun8/sansan/main/data%20proyek.csv"
 
-# Menyimpan dataframe mentah asli untuk ditampilkan
 try:
     df_original_raw = pd.read_csv(url, engine='python', quoting=csv.QUOTE_MINIMAL, on_bad_lines='skip')
 except pd.errors.ParserError:
@@ -106,9 +99,7 @@ if df_processed.empty:
     st.error("Gagal memuat atau memproses data. Aplikasi tidak dapat melanjutkan.")
     st.stop()
 
-# Kolom numerik yang mungkin masih berguna (selain yang akan dibuat oleh TF-IDF)
 numerical_cols_original = ['review_length', 'word_count']
-# Pastikan kolom ini ada
 numerical_cols_for_viz = [col for col in numerical_cols_original if col in df_processed.columns]
 
 
@@ -145,7 +136,7 @@ if menu == "Halaman Awal":
 
     st.subheader("Karakteristik Data (Statistik Deskriptif untuk Fitur Tambahan)")
     if not df_processed.empty and numerical_cols_for_viz and not df_processed[numerical_cols_for_viz].empty:
-        st.dataframe(df_processed[numerical_cols_for_viz + ['score']].describe()) # Tambahkan score jika ada
+        st.dataframe(df_processed[numerical_cols_for_viz + (['score'] if 'score' in df_processed.columns else [])].describe())
     else:
         st.info("Tidak ada kolom numerik ('review_length', 'word_count') untuk ditampilkan statistiknya atau data gagal dimuat.")
 
@@ -172,18 +163,14 @@ if menu == "Halaman Awal":
 
 # ====================== HALAMAN MODEL SENTIMEN ======================
 elif menu == "Model Sentimen":
-    st.title("🤖 Model Klasifikasi Sentimen")
+    st.title("🤖 Model Performance: Klasifikasi Sentimen")
 
     if df_processed.empty or 'cleaned_content' not in df_processed.columns or 'Sentiment_Label' not in df_processed.columns:
         st.warning("Data yang diproses tidak lengkap atau tidak ada. Tidak dapat melatih model.")
         st.stop()
     
-    if df_processed['cleaned_content'].isnull().any() or df_processed['cleaned_content'].eq('').any():
-        st.warning("Ada nilai kosong atau string kosong di 'cleaned_content'. Model mungkin tidak optimal. Baris dengan konten kosong telah dihapus.")
-        df_model_data = df_processed.dropna(subset=['cleaned_content'])
-        df_model_data = df_model_data[df_model_data['cleaned_content'].str.strip() != '']
-    else:
-        df_model_data = df_processed.copy()
+    df_model_data = df_processed.dropna(subset=['cleaned_content'])
+    df_model_data = df_model_data[df_model_data['cleaned_content'].str.strip() != '']
 
     if df_model_data.empty:
         st.error("Tidak ada data yang valid untuk melatih model setelah filter tambahan.")
@@ -196,60 +183,88 @@ elif menu == "Model Sentimen":
         st.error(f"Tidak cukup data atau variasi kelas untuk melatih model. Jumlah data: {len(X)}, Jumlah kelas unik: {len(y.unique())}")
         st.stop()
         
-    # Split data
-    # Stratify y untuk memastikan proporsi kelas sama di train dan test set, jika memungkinkan
     try:
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.25, random_state=42, stratify=y if len(y.unique()) > 1 and y.value_counts().min() >=2 else None
+            X, y, test_size=0.25, random_state=42, stratify=y if y.value_counts().min() >=2 else None
         )
     except ValueError as e:
         st.warning(f"Tidak bisa melakukan stratify karena salah satu kelas mungkin terlalu sedikit: {e}. Melanjutkan tanpa stratify.")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
 
+    # --- Model Selection (Placeholder for future model choice) ---
+    # Untuk sekarang, kita hardcode Logistic Regression, tapi Anda bisa menambahkan pilihan model di sini
+    selected_model_name = "Logistic Regression" 
+    classifier = LogisticRegression(random_state=42, solver='liblinear', C=1.0)
+    
+    # Jika Anda ingin meniru "Model DecisionTreeClassifier" dari gambar, Anda bisa ganti:
+    # from sklearn.tree import DecisionTreeClassifier
+    # selected_model_name = "Decision Tree Classifier"
+    # classifier = DecisionTreeClassifier(random_state=42)
+    # --------------------------------------------------------------
 
-    # Definisikan preprocessor untuk teks (TF-IDF)
-    # Tidak ada fitur numerik lain yang akan digabung dengan TF-IDF di pipeline ini untuk kesederhanaan,
-    # tapi bisa ditambahkan menggunakan ColumnTransformer jika diinginkan.
-    text_processor = TfidfVectorizer(max_features=3000, ngram_range=(1,2)) # max_features dan ngram_range bisa di-tune
-
-    # Buat pipeline: TF-IDF -> Classifier
-    # Modelnya Logistic Regression untuk contoh
+    text_processor = TfidfVectorizer(max_features=3000, ngram_range=(1,2))
     model_pipeline = Pipeline([
         ('tfidf', text_processor),
-        ('classifier', LogisticRegression(random_state=42, solver='liblinear', C=1.0)) # C bisa di-tune
+        ('classifier', classifier) 
     ])
 
     st.subheader("⚙️ Pelatihan Model")
-    with st.spinner("Melatih model klasifikasi sentimen..."):
+    with st.spinner(f"Melatih model {selected_model_name}..."):
         try:
             model_pipeline.fit(X_train, y_train)
             st.session_state.sentiment_model_pipeline = model_pipeline
-            st.session_state.X_test_sentiment = X_test # Simpan untuk evaluasi jika diperlukan
+            st.session_state.X_test_sentiment = X_test 
             st.session_state.y_test_sentiment = y_test
-            st.success("Model berhasil dilatih!")
+            st.session_state.model_name_trained = selected_model_name # Simpan nama model
+            st.success(f"Model {selected_model_name} berhasil dilatih!")
         except ValueError as e:
             st.error(f"Error saat melatih model: {e}")
-            st.error("Ini bisa terjadi jika vocabulary kosong setelah preprocessing (misalnya, semua kata adalah stopwords atau teks sangat pendek).")
             st.stop()
 
 
     if 'sentiment_model_pipeline' in st.session_state:
-        st.subheader("📊 Evaluasi Model pada Data Uji")
+        st.subheader("📊 Hasil Evaluasi Model pada Data Uji")
+        
         model_trained = st.session_state.sentiment_model_pipeline
         X_test_eval = st.session_state.X_test_sentiment
         y_test_eval = st.session_state.y_test_sentiment
+        model_name_display = st.session_state.get('model_name_trained', "Classifier") # Ambil nama model
+
+        # Menampilkan nama model dengan gaya seperti di gambar
+        st.markdown(f"""
+        <div style="background-color:#e6ffe6; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center;">
+            <h4 style="color: #006400; margin:0;">Model: {model_name_display}</h4>
+        </div>
+        """, unsafe_allow_html=True)
 
         try:
             y_pred = model_trained.predict(X_test_eval)
-            accuracy = accuracy_score(y_test_eval, y_pred)
             
-            st.write(f"Akurasi Model: **{accuracy:.2f}**")
+            # Hitung metrik individual
+            accuracy = accuracy_score(y_test_eval, y_pred)
+            # Untuk presisi, recall, f1-score, kita gunakan rata-rata 'weighted' untuk menangani imbalanced classes
+            # atau 'macro' jika Anda ingin setiap kelas berkontribusi sama.
+            # 'binary' jika hanya ada 1 kelas positif (tidak relevan di sini karena ada 0 dan 1)
+            # Jika Anda ingin per kelas, Anda perlu mengambilnya dari classification_report
+            precision = precision_score(y_test_eval, y_pred, average='weighted', zero_division=0)
+            recall = recall_score(y_test_eval, y_pred, average='weighted', zero_division=0)
+            f1 = f1_score(y_test_eval, y_pred, average='weighted', zero_division=0)
 
-            st.text("Laporan Klasifikasi:")
-            # classification_report butuh target_names
-            target_names = ['Negatif (0)', 'Positif (1)'] # Sesuai mapping Sentimen_Label
-            report = classification_report(y_test_eval, y_pred, target_names=target_names, output_dict=True, zero_division=0)
-            st.dataframe(pd.DataFrame(report).transpose())
+            # Tampilkan metrik menggunakan st.columns dan st.metric
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label="Accuracy", value=f"{accuracy*100:.1f}%")
+                st.metric(label="Recall", value=f"{recall*100:.1f}%")
+            with col2:
+                st.metric(label="Precision", value=f"{precision*100:.1f}%")
+                st.metric(label="F1-Score", value=f"{f1*100:.1f}%")
+
+            st.markdown("---") # Garis pemisah
+
+            st.text("Laporan Klasifikasi Lengkap:")
+            target_names = ['Negatif (0)', 'Positif (1)'] 
+            report_dict = classification_report(y_test_eval, y_pred, target_names=target_names, output_dict=True, zero_division=0)
+            st.dataframe(pd.DataFrame(report_dict).transpose())
 
             st.text("Matriks Konfusi:")
             cm = confusion_matrix(y_test_eval, y_pred)
@@ -261,7 +276,6 @@ elif menu == "Model Sentimen":
 
         except Exception as e:
             st.error(f"Error saat evaluasi model: {e}")
-            st.error("Ini bisa terjadi jika data uji tidak dapat diproses oleh model yang dilatih.")
 
 # ====================== HALAMAN PREDIKSI SENTIMEN ======================
 elif menu == "Prediksi Sentimen":
@@ -279,15 +293,12 @@ elif menu == "Prediksi Sentimen":
             if not user_comment_input.strip():
                 st.error("Harap masukkan komentar untuk diprediksi.")
             else:
-                # Preprocess input text sama seperti saat training
                 cleaned_comment = simple_text_cleaner(user_comment_input)
                 
                 if not cleaned_comment.strip():
                     st.error("Komentar menjadi kosong setelah pembersihan dasar. Tidak dapat diprediksi.")
                 else:
                     try:
-                        # Prediksi menggunakan pipeline yang sudah dilatih
-                        # Pipeline akan menangani TF-IDF transform
                         prediction_proba = model_to_predict.predict_proba([cleaned_comment])[0]
                         prediction_label = model_to_predict.predict([cleaned_comment])[0]
 
@@ -312,7 +323,6 @@ elif menu == "Prediksi Sentimen":
 
                     except Exception as e:
                         st.error(f"Terjadi kesalahan saat prediksi: {e}")
-                        st.error("Ini bisa terjadi jika model tidak dapat memproses input. Pastikan model dilatih dengan benar.")
 
 # ====================== HALAMAN INFORMASI APLIKASI ======================
 elif menu == "Informasi Aplikasi":
@@ -328,7 +338,7 @@ elif menu == "Informasi Aplikasi":
 
     st.header("Data yang Digunakan")
     st.write(f"""
-    Dataset yang digunakan dalam aplikasi ini di ambil dari Kaggle (Anda bisa sebutkan nama datasetnya jika spesifik).
+    Dataset yang digunakan dalam aplikasi ini di ambil dari Kaggle.
     Dataset ini berisi ulasan pengguna, termasuk skor yang diberikan dan konten ulasan.
     Sentimen ('Positif'/'Negatif') ditentukan berdasarkan kolom 'score':
     - Skor 1-2: Negatif
@@ -347,23 +357,18 @@ elif menu == "Informasi Aplikasi":
     st.write("""
     Metode yang digunakan adalah **Klasifikasi Teks supervised learning**.
     1.  **Preprocessing Teks**: Teks ulasan dibersihkan.
-    2.  **Vektorisasi Teks**: `cleaned_content` diubah menjadi fitur numerik menggunakan TF-IDF (Term Frequency-Inverse Document Frequency). Ini menangkap pentingnya kata dalam dokumen relatif terhadap seluruh korpus.
-    3.  **Model Klasifikasi**: Model `Logistic Regression` dilatih pada fitur TF-IDF untuk membedakan antara ulasan positif dan negatif.
-    4.  **Evaluasi**: Kinerja model diukur menggunakan metrik seperti akurasi, laporan klasifikasi (presisi, recall, F1-score), dan matriks konfusi pada data uji yang tidak terlihat saat pelatihan.
+    2.  **Vektorisasi Teks**: `cleaned_content` diubah menjadi fitur numerik menggunakan TF-IDF (Term Frequency-Inverse Document Frequency).
+    3.  **Model Klasifikasi**: Model seperti `Logistic Regression` (atau model lain yang dipilih) dilatih pada fitur TF-IDF.
+    4.  **Evaluasi**: Kinerja model diukur menggunakan Akurasi, Presisi, Recall, F1-Score, dan Matriks Konfusi.
     """)
 
     st.header("Cara Menggunakan Aplikasi")
     st.write("""
     1.  **Navigasi**: Gunakan menu dropdown di sidebar kiri untuk berpindah antar halaman.
-    2.  **Halaman Awal**: Menampilkan sampel dataset asli dan yang telah diproses, distribusi sentimen, statistik deskriptif, 
-        serta visualisasi fitur tambahan.
-    3.  **Model Sentimen**: 
-        - Halaman ini melatih model klasifikasi sentimen secara otomatis ketika diakses.
-        - Menampilkan metrik evaluasi kinerja model pada data uji, termasuk akurasi, laporan klasifikasi, dan matriks konfusi.
-    4.  **Prediksi Sentimen**: 
-        - Memungkinkan Anda memasukkan teks ulasan baru.
-        - Aplikasi akan memprediksi apakah sentimen ulasan tersebut 'Positif' atau 'Negatif' menggunakan model yang telah dilatih.
-    5.  **Informasi Aplikasi**: Halaman ini yang sedang Anda lihat, berisi penjelasan mengenai aplikasi.
+    2.  **Halaman Awal**: Menampilkan sampel data, distribusi sentimen, dan visualisasi fitur.
+    3.  **Model Sentimen**: Melatih model dan menampilkan kinerjanya dalam format kartu (Akurasi, Presisi, Recall, F1-Score), laporan klasifikasi, dan matriks konfusi.
+    4.  **Prediksi Sentimen**: Memasukkan teks baru untuk diprediksi sentimennya.
+    5.  **Informasi Aplikasi**: Penjelasan mengenai aplikasi.
     """)
 
     st.header("Tentang Proyek Ini")
@@ -372,4 +377,4 @@ elif menu == "Informasi Aplikasi":
     dapat diterapkan untuk analisis sentimen.
     """)
     st.markdown("---")
-    st.caption("Versi Aplikasi: 2.0.0 (Sentiment Analysis)")
+    st.caption("Versi Aplikasi: 2.1.0 (Sentiment Analysis with Metric Cards)")
