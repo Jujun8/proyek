@@ -130,7 +130,7 @@ if menu == "Halaman Awal":
     st.subheader("Dataset Setelah Pemrosesan dan Pembuatan Fitur")
     if not df_processed.empty:
         st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses.")
-        st.dataframe(df_processed[['content', 'score', 'cleaned_content', 'panjang karakter', 'jumlah kata', 'Sentiment', 'Sentiment_Label']].head())
+        st.dataframe(df_processed[['content', 'score', 'cleaned_content', 'panjang karakter', 'jumlah kata', 'Sentiment', 'Sentiment_Label']].)
     else:
         st.warning("Gagal menampilkan dataset yang diproses.")
 
