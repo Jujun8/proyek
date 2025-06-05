@@ -42,13 +42,14 @@ def load_data(url):
     if 'content' in df.columns:
         df['content'] = df['content'].astype(str).fillna('')
         df['cleaned_content'] = df['content'].apply(simple_text_cleaner)
-        df['review_length'] = df['cleaned_content'].str.len()
-        df['word_count'] = df['cleaned_content'].str.split().str.len()
+       df['panjang karakter'] = df['cleaned_content'].str.len()
+df['jumlah kata'] = df['cleaned_content'].str.split().str.len()
+
     else:
         st.warning("Kolom 'content' tidak ditemukan.")
         df['cleaned_content'] = ""
-        df['review_length'] = 0
-        df['word_count'] = 0
+        df['panjang karakter'] = 0
+        df['jumlah kata'] = 0
 
     if 'score' not in df.columns:
         st.error("Kolom 'score' tidak ditemukan. Tidak dapat membuat target sentimen.")
@@ -104,7 +105,8 @@ if df_processed.empty:
     st.error("Gagal memuat atau memproses data. Aplikasi tidak dapat melanjutkan.")
     st.stop()
 
-numerical_cols_original = ['review_length', 'word_count']
+numerical_cols_original = ['panjang karakter', 'jumlah kata']
+
 numerical_cols_for_viz = [col for col in numerical_cols_original if col in df_processed.columns]
 
 
@@ -127,7 +129,7 @@ if menu == "Halaman Awal":
     st.subheader("Dataset Setelah Pemrosesan dan Pembuatan Fitur")
     if not df_processed.empty:
         st.markdown(f"Menampilkan **{len(df_processed)}** baris data yang telah diproses.")
-        st.dataframe(df_processed[['content', 'score', 'cleaned_content', 'review_length', 'word_count', 'Sentiment', 'Sentiment_Label']].head())
+        st.dataframe(df_processed[['content', 'score', 'cleaned_content', 'panjang karakter', 'jumlah kata', 'Sentiment', 'Sentiment_Label']].head())
     else:
         st.warning("Gagal menampilkan dataset yang diproses.")
 
@@ -364,8 +366,8 @@ elif menu == "Informasi Aplikasi":
     st.write("""
     Fitur tambahan yang dibuat dari data asli adalah:
     - **`cleaned_content`**: Konten ulasan setelah pembersihan dasar.
-    - **`review_length`**: Panjang karakter dari `cleaned_content`.
-    - **`word_count`**: Jumlah kata dalam `cleaned_content`.
+    - **`panjang karakter`**: Panjang karakter dari `cleaned_content`.
+    - **`jumlah kata`**: Jumlah kata dalam `cleaned_content`.
     Fitur utama untuk model sentimen adalah representasi TF-IDF dari `cleaned_content`.
     """)
 
