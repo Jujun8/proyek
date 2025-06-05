@@ -174,7 +174,7 @@ if menu == "Halaman Awal":
         st.info("Tidak cukup fitur numerik untuk divisualisasikan.")
 
 
-# ====================== HALAMAN MODEL SENTIMEN ======================
+# ====================== HALAMAN MODEL ======================
 elif menu == "Model":
     st.title("🤖 Model Performance: Klasifikasi Sentimen (Multi-class)")
 
@@ -283,7 +283,7 @@ elif menu == "Model":
         except Exception as e:
             st.error(f"Error saat evaluasi model: {e}")
 
-# ====================== HALAMAN PREDIKSI SENTIMEN ======================
+# ====================== HALAMAN PREDIKSI ======================
 elif menu == "Prediksi":
     st.title("🔮 Prediksi Sentimen untuk Komentar Baru")
 
