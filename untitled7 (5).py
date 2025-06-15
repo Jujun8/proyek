@@ -110,7 +110,7 @@ numerical_cols_for_viz = [col for col in numerical_cols_original if col in df_pr
 
 # Sidebar menu
 # Menambahkan "Anggota Kelompok" ke menu jika belum ada dan menyesuaikan nama menu lain jika perlu
-menu_options = ["Halaman Awal", "Model", "Prediksi", "Informasi Aplikasi",]
+menu_options = ["Halaman Awal", "Model", "Prediksi", "Informasi Aplikasi","Anggota Kelompok"]
 menu = st.sidebar.selectbox("📁 Navigasi", menu_options)
 
 # ====================== HALAMAN AWAL ======================
