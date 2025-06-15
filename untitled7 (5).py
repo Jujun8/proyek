@@ -376,10 +376,10 @@ elif menu == "Informasi Aplikasi":
     st.header("Cara Menggunakan Aplikasi")
     st.write("""
     1.  **Navigasi**: Gunakan menu dropdown di sidebar kiri.
-    2.  **Halaman Awal**: Menampilkan seluruh dataset mentah, seluruh data yang diproses, distribusi sentimen (termasuk Netral), dan visualisasi fitur.
-    3.  **Model**: Melatih model multi-class dan menampilkan kinerjanya.
-    4.  **Prediksi**: Memasukkan teks baru untuk diprediksi sentimennya (Positif, Negatif, atau Netral).
-    5.  **Informasi Aplikasi**: Penjelasan mengenai aplikasi.
+    2.  **Informasi Aplikasi**: Penjelasan mengenai aplikasi.
+    3.  **Halaman Awal**: Menampilkan seluruh dataset mentah, seluruh data yang diproses, distribusi sentimen (termasuk Netral), dan visualisasi fitur.**Model**: Melatih model multi-class dan menampilkan kinerjanya.
+    4.  **Model**: Melatih model multi-class dan menampilkan kinerjanya.**Prediksi**: Memasukkan teks baru untuk diprediksi sentimennya (Positif, Negatif, atau Netral).
+    5.  **Prediksi**: Memasukkan teks baru untuk diprediksi sentimennya (Positif, Negatif, atau Netral).
     6.  **Anggota Kelompok**: Menampilkan nama anggota kelompok.
     """)
     st.markdown("---")
